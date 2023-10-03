@@ -13,15 +13,18 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late GoogleMapController mapController;
+  late Future<LatLng> userLocation;
 
-  Future<Position> getUserCurrentLocation() async {
+  Future<LatLng> getUserCurrentLocation() async {
     await Geolocator.requestPermission()
         .then((value) {})
         .onError((error, stackTrace) async {
       await Geolocator.requestPermission();
-      print("ERROR" + error.toString());
     });
-    return await Geolocator.getCurrentPosition();
+
+    final Position position = await Geolocator.getCurrentPosition();
+    final LatLng userLatLng = LatLng(position.latitude, position.longitude);
+    return userLatLng;
   }
 
   void _onMapCreated(GoogleMapController controller) {
@@ -29,17 +32,37 @@ class _MyAppState extends State<MyApp> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    userLocation = getUserCurrentLocation();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        body: GoogleMap(
-          onMapCreated: _onMapCreated,
-          initialCameraPosition: CameraPosition(
-            target: getUserCurrentLocation(),
-            zoom: 11.0,
-          ),
-        ),
+      home: FutureBuilder<LatLng>(
+        future: userLocation,
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            return GoogleMap(
+              onMapCreated: _onMapCreated,
+              initialCameraPosition: CameraPosition(
+                target: snapshot.data!,
+                zoom: 14.0,
+              ),
+              myLocationEnabled: true,
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text("Error: ${snapshot.error}"),
+            );
+          } else {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+        },
       ),
     );
   }
