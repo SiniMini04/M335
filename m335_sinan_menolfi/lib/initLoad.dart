@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:m335_sinan_menolfi/db.dart';
 import 'package:m335_sinan_menolfi/home.dart';
 
 class InitLoad extends StatefulWidget {
@@ -16,7 +19,7 @@ class _InitLoadState extends State<InitLoad> {
 
   Future<void> checkFirstSeen(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool isFirstLaunch = (prefs.getBool('isFirstLaunch') ?? false);
+    bool isFirstLaunch = (prefs.getBool('isFirstLaunch') ?? true);
 
     if (isFirstLaunch) {
       Navigator.of(context)
@@ -40,6 +43,38 @@ class initscreen extends StatefulWidget {
 }
 
 class _initscreen extends State<initscreen> {
+  final userNameInput = TextEditingController();
+
+  @override
+  void dispose() {
+    super.dispose();
+    userNameInput.dispose();
+  }
+
+  Future<String> getUserCurrentLocation() async {
+    await Geolocator.requestPermission()
+        .then((value) {})
+        .onError((error, stackTrace) async {
+      await Geolocator.requestPermission();
+    });
+
+    final Position position = await Geolocator.getCurrentPosition();
+    final LatLng userLatLng = LatLng(position.latitude, position.longitude);
+    return userLatLng.toString();
+  }
+
+  void writeToDB(String UserName) async {
+    String location = await getUserCurrentLocation();
+
+    DBConnection dbConnection = DBConnection();
+    dbConnection.insertUser(UserName, location);
+  }
+
+  void saveUsernmeLocaly(String UserName) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString('UserName', UserName);
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -57,11 +92,12 @@ class _initscreen extends State<initscreen> {
                 style: TextStyle(color: Colors.white, fontSize: 25),
               ),
               const SizedBox(height: 20),
-              const FractionallySizedBox(
+              FractionallySizedBox(
                 widthFactor: 0.8,
                 child: TextField(
                   textAlign: TextAlign.center,
-                  decoration: InputDecoration(
+                  controller: userNameInput,
+                  decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     hintText: 'Enter E-Mail',
                     fillColor: Colors.white,
@@ -75,6 +111,8 @@ class _initscreen extends State<initscreen> {
                 width: screenWidth * 0.5,
                 child: ElevatedButton(
                   onPressed: () {
+                    saveUsernmeLocaly(userNameInput.text.toString());
+                    writeToDB(userNameInput.text);
                     Navigator.of(context).pushReplacement(
                         MaterialPageRoute(builder: (context) => Home()));
                   },

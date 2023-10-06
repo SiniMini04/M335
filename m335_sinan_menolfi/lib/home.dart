@@ -1,6 +1,9 @@
+import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:m335_sinan_menolfi/db.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -12,12 +15,6 @@ class _HomeState extends State<Home> {
   late Future<LatLng> userLocation;
 
   Future<LatLng> getUserCurrentLocation() async {
-    await Geolocator.requestPermission()
-        .then((value) {})
-        .onError((error, stackTrace) async {
-      await Geolocator.requestPermission();
-    });
-
     final Position position = await Geolocator.getCurrentPosition();
     final LatLng userLatLng = LatLng(position.latitude, position.longitude);
     return userLatLng;
@@ -25,6 +22,21 @@ class _HomeState extends State<Home> {
 
   void _onMapCreated(GoogleMapController controller) {
     mapController = controller;
+  }
+
+  void sendLocationToDB() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? UserName = prefs.getString('UserName');
+
+    Timer.periodic(Duration(seconds: 2), (timer) async {
+      print("Send");
+      var location = await getUserCurrentLocation();
+
+      print(UserName);
+      print(location);
+      DBConnection dbConnection = DBConnection();
+      dbConnection.updateLocation(UserName!, location.toString());
+    });
   }
 
   Future<void> getFriendEmail(BuildContext context) async {
@@ -78,6 +90,7 @@ class _HomeState extends State<Home> {
   }
 
   Widget build(BuildContext context) {
+    sendLocationToDB();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
@@ -121,7 +134,6 @@ class _HomeState extends State<Home> {
                     size: 50,
                   ),
                   onPressed: () {
-                    print("object");
                     getFriendEmail(context);
                   },
                 ),

@@ -38,6 +38,7 @@ dependencies:
   geolocator: ^10.1.0
   fluttericon: ^2.0.0
   shared_preferences: ^2.2.1
+  mongo_dart: ^0.9.3
 
 dev_dependencies:
   flutter_test:
